@@ -3,27 +3,29 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>囲碁 vs 将棋</title>
+  <title>囲碁 vs 将棋 v1.5</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>囲碁 vs 将棋</h1>
-
+  <h1>囲碁 vs 将棋 v1.5</h1>
   <div id="setup">
-    <p>プレイヤー名を入力してください</p>
     <input type="text" id="igoName" placeholder="囲碁プレイヤー名" />
     <input type="text" id="shogiName" placeholder="将棋プレイヤー名" />
-    <br />
     <button onclick="startGame()">開始</button>
   </div>
-
   <div id="game" class="hidden">
     <div id="turnInfo">現在のターン：<span id="turn">囲碁</span></div>
     <div id="dialog"></div>
-    <div class="board" id="board"></div>
+    <div class="container">
+      <div class="board" id="board"></div>
+      <div class="captured">
+        <h3>取得した石/駒</h3>
+        <div>囲碁側: <span id="igoCaptured">0</span></div>
+        <div>将棋側: <span id="shogiCaptured">0</span></div>
+      </div>
+    </div>
     <button onclick="resetGame()">リセット</button>
   </div>
-
   <script src="script.js"></script>
 </body>
 </html>

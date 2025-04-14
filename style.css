@@ -4,15 +4,17 @@ body {
   text-align: center;
   background-color: #f0f0f0;
 }
-.hidden {
-  display: none;
+.hidden { display: none; }
+.container {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
 }
 .board {
   display: grid;
   grid-template-columns: repeat(9, 40px);
   grid-template-rows: repeat(9, 40px);
   gap: 2px;
-  margin: 10px auto;
   background-color: #e0c68c;
   padding: 10px;
   border: 4px solid #444;
@@ -28,13 +30,9 @@ body {
   font-size: 18px;
   cursor: pointer;
 }
-.black {
-  color: black;
-}
-.shogi {
-  color: darkred;
-  font-weight: bold;
-}
+.black { color: black; }
+.shogi { color: darkred; font-weight: bold; }
+.highlight { background-color: #aeeaaa !important; }
 #dialog {
   font-size: 1.1em;
   margin-top: 10px;
@@ -44,8 +42,9 @@ body {
   margin-top: 10px;
   font-size: 1.2em;
 }
-input {
-  margin: 4px;
+.captured {
+  text-align: left;
+  font-size: 14px;
 }
 button {
   margin-top: 10px;
