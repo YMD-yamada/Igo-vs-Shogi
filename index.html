@@ -1,31 +1,13 @@
 
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-  <meta charset="UTF-8" />
-  <title>囲碁 vs 将棋 v1.5</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <h1>囲碁 vs 将棋 v1.5</h1>
-  <div id="setup">
-    <input type="text" id="igoName" placeholder="囲碁プレイヤー名" />
-    <input type="text" id="shogiName" placeholder="将棋プレイヤー名" />
-    <button onclick="startGame()">開始</button>
-  </div>
-  <div id="game" class="hidden">
-    <div id="turnInfo">現在のターン：<span id="turn">囲碁</span></div>
-    <div id="dialog"></div>
-    <div class="container">
-      <div class="board" id="board"></div>
-      <div class="captured">
-        <h3>取得した石/駒</h3>
-        <div>囲碁側: <span id="igoCaptured">0</span></div>
-        <div>将棋側: <span id="shogiCaptured">0</span></div>
-      </div>
-    </div>
-    <button onclick="resetGame()">リセット</button>
-  </div>
-  <script src="script.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>囲碁 vs 将棋 - 非対称バトル</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
