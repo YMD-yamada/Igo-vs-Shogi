@@ -1,0 +1,22 @@
+{
+  "name": "kuroshiro",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @kuroshiro/web",
+    "dev:server": "npm run dev -w @kuroshiro/server",
+    "dev:desktop": "npm run dev -w @kuroshiro/desktop",
+    "build": "npm run build -w @kuroshiro/engine && npm run build -w @kuroshiro/web && npm run build -w @kuroshiro/server",
+    "build:web": "npm run build -w @kuroshiro/engine && npm run build -w @kuroshiro/web",
+    "test": "npm run test -w @kuroshiro/engine",
+    "smoke": "npm run test && npm run build:web",
+    "start:server": "npm run start -w @kuroshiro/server"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

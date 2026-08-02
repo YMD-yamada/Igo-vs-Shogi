@@ -1,0 +1,13 @@
+{
+  "name": "@kuroshiro/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^37.3.1"
+  }
+}
