@@ -300,8 +300,10 @@ export function App() {
 
       {message && <div className="muted">{message}</div>}
 
-      <div className="boards">
-        <section className={`panel${state.activeSide === "go" ? " active" : ""}`}>
+      <div className={`boards focus-${state.activeSide}`}>
+        <section
+          className={`panel go-panel${state.activeSide === "go" ? " active" : ""}`}
+        >
           <h2>
             囲碁盤 <span>9×9</span>
           </h2>
@@ -313,7 +315,9 @@ export function App() {
             hideContent={hideForPass}
           />
         </section>
-        <section className={`panel${state.activeSide === "shogi" ? " active" : ""}`}>
+        <section
+          className={`panel shogi-panel${state.activeSide === "shogi" ? " active" : ""}`}
+        >
           <h2>
             将棋盤 <span>5×5</span>
           </h2>

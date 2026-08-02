@@ -241,6 +241,21 @@ button {
   gap: 12px;
 }
 
+.boards.focus-shogi .shogi-panel {
+  order: -1;
+}
+
+.boards .panel:not(.active) {
+  opacity: 0.72;
+  transform: scale(0.985);
+  transition: opacity 0.25s ease, transform 0.25s ease, outline-color 0.25s ease;
+}
+
+.boards .panel.active {
+  opacity: 1;
+  transform: none;
+}
+
 .panel {
   padding: 12px;
   border-radius: 14px;
