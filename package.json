@@ -7,7 +7,7 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev -w @kuroshiro/web --",
+    "dev": "node scripts/dev-web.mjs",
     "dev:server": "npm run dev -w @kuroshiro/server",
     "dev:desktop": "npm run dev -w @kuroshiro/desktop",
     "build": "npm run build -w @kuroshiro/engine && npm run build -w @kuroshiro/web && npm run build -w @kuroshiro/server",

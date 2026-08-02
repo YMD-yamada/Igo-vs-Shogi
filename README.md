@@ -16,10 +16,11 @@ npm run build -w @kuroshiro/engine
 ## 起動
 
 ```bash
-# Web（PWA対応）
+# Web（PWA対応・既定 127.0.0.1:5173 / Windows でもフラグ転送可）
 npm run dev
+# 追加 Vite フラグ例: npm run dev -- --strictPort
 
-# オンライン用サーバー（別ターミナル）
+# オンライン用サーバー（別ターミナル・既定 :8787）
 npm run dev:server
 
 # デスクトップ（Electron・先に Web dev を起動）
