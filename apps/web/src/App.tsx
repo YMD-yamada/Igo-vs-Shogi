@@ -51,6 +51,11 @@ export function App() {
     }
   }, [state]);
 
+  useEffect(() => {
+    if (!state) return;
+    if (state.activeSide !== "go") setGoPreview(null);
+  }, [state?.activeSide, state?.turn]);
+
   const startLocal = (mode: GameMode) => {
     modeRef.current = mode;
     clientRef.current?.close();
@@ -91,7 +96,7 @@ export function App() {
     const client = new OnlineClient();
     clientRef.current = client;
     try {
-      await client.connect((msg) => {
+      const onMsg = (msg: import("./online").OnlineMessage) => {
         if (msg.type === "created" || msg.type === "joined") {
           setRoomId(msg.roomId);
           setMySide(msg.side);
@@ -105,13 +110,16 @@ export function App() {
           );
         } else if (msg.type === "state") {
           setState(msg.state);
+          setGoPreview(null);
           if (msg.lastMessage) setMessage(msg.lastMessage);
         } else if (msg.type === "error") {
           setOnlineStatus(msg.message);
+          setMessage(msg.message);
         } else if (msg.type === "peer_left") {
           setMessage("相手が切断しました");
         }
-      });
+      };
+      await client.connect(onMsg);
       modeRef.current = "online";
       client.send({ type: "create" });
     } catch {
@@ -138,9 +146,11 @@ export function App() {
           setMessage(`ルーム ${msg.roomId} に参加（あなたは${sideLabel(msg.side)}）`);
         } else if (msg.type === "state") {
           setState(msg.state);
+          setGoPreview(null);
           if (msg.lastMessage) setMessage(msg.lastMessage);
         } else if (msg.type === "error") {
           setOnlineStatus(msg.message);
+          setMessage(msg.message);
         } else if (msg.type === "peer_left") {
           setMessage("相手が切断しました");
         }
@@ -214,7 +224,7 @@ export function App() {
           </p>
           <h3>勝利</h3>
           <p>
-            囲碁は白石累計6捕獲、または将棋の王消滅／合法手なし。将棋は侵攻駒4捕獲、または黒石が大きく減った状態で勝ち。
+            囲碁は白石累計6捕獲、または将棋が合法手を失ったとき。将棋は侵攻駒4捕獲（取ると歩が手に入る）、または一度広がった黒石が大きく減ったとき。
           </p>
         </div>
         <button type="button" className="confirm-btn" onClick={() => setScreen("menu")}>
@@ -372,6 +382,23 @@ export function App() {
             </button>
           </>
         )}
+        {mySide || state.mode !== "online" ? (
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() =>
+              dispatch({
+                type: "resign",
+                side:
+                  state.mode === "online" && mySide
+                    ? mySide
+                    : state.activeSide,
+              })
+            }
+          >
+            投了
+          </button>
+        ) : null}
         <button
           type="button"
           className="ghost-btn"

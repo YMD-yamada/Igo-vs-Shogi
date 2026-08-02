@@ -43,14 +43,29 @@ const clearSelection = (state: GameState): GameState => ({
   legalShogiTargets: [],
 });
 
+const shogiIsImmobilized = (state: GameState): boolean =>
+  !hasLegalShogiAction(state.shogiBoard, state.shogiHand) &&
+  state.shogiPressure < state.config.pressureReleaseAt;
+
 const endTurn = (state: GameState): GameState => {
   const nextSide: Side = state.activeSide === "go" ? "shogi" : "go";
-  return clearSelection({
+  const advanced = clearSelection({
     ...state,
     activeSide: nextSide,
     turn: state.turn + 1,
     passCurtain: state.mode === "hotseat",
   });
+
+  // After Go hands off, Shogi with no moves and no release loses immediately
+  if (nextSide === "shogi" && shogiIsImmobilized(advanced)) {
+    return {
+      ...advanced,
+      passCurtain: false,
+      winner: "go",
+      log: pushLog(advanced, "将棋に合法手なし — 囲碁側の勝利"),
+    };
+  }
+  return advanced;
 };
 
 const clampPressure = (value: number, max: number): number =>
@@ -212,12 +227,7 @@ const resolveWinner = (state: GameState): Outcome => {
 const withWinner = (state: GameState): GameState => {
   const synced = syncPeakBlack(state);
   let winner = resolveWinner(synced);
-  if (
-    !winner &&
-    synced.activeSide === "shogi" &&
-    !hasLegalShogiAction(synced.shogiBoard, synced.shogiHand) &&
-    synced.shogiPressure < synced.config.pressureReleaseAt
-  ) {
+  if (!winner && synced.activeSide === "shogi" && shogiIsImmobilized(synced)) {
     winner = "go";
   }
   if (!winner) return synced;
@@ -425,9 +435,12 @@ export const applyAction = (state: GameState, action: Action): ApplyResult => {
       shogiBoard: moved.board,
       shogiInvaderCaptures:
         state.shogiInvaderCaptures + (moved.capturedInvader ? 1 : 0),
+      shogiHand: moved.capturedInvader
+        ? { ...state.shogiHand, pawn: state.shogiHand.pawn + 1 }
+        : state.shogiHand,
       log: pushLog(
         state,
-        `将棋: (${state.selectedShogi.row + 1},${state.selectedShogi.col + 1})→(${action.to.row + 1},${action.to.col + 1})${moved.capturedInvader ? " 侵攻捕獲" : ""}`,
+        `将棋: (${state.selectedShogi.row + 1},${state.selectedShogi.col + 1})→(${action.to.row + 1},${action.to.col + 1})${moved.capturedInvader ? " 侵攻捕獲（歩入手）" : ""}`,
       ),
     };
     if (moved.capturedInvader) {

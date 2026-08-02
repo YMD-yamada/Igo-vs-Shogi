@@ -105,4 +105,19 @@ describe("game integration", () => {
     const result = applyAction(state, { type: "resign", side: "go" });
     expect(result.state.winner).toBe("shogi");
   });
+
+  it("invader capture grants a pawn in hand", () => {
+    let state = createInitialState("hotseat", { seed: 11 });
+    state = applyAction(state, { type: "go_place", at: { row: 0, col: 0 } }).state;
+    state = applyAction(state, { type: "dismiss_curtain" }).state;
+    // plant invader next to king
+    const board = state.shogiBoard.map((row) => [...row]) as typeof state.shogiBoard;
+    board[3][2] = { id: "ix", owner: "invader", kind: "invader" };
+    state = { ...state, shogiBoard: board };
+    state = applyAction(state, { type: "shogi_select", at: { row: 4, col: 2 } }).state;
+    const result = applyAction(state, { type: "shogi_move", to: { row: 3, col: 2 } });
+    expect(result.ok).toBe(true);
+    expect(result.state.shogiInvaderCaptures).toBe(1);
+    expect(result.state.shogiHand.pawn).toBe(1);
+  });
 });

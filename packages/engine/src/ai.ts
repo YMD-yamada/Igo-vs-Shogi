@@ -10,13 +10,15 @@ const captureCountIfPlace = (state: GameState, at: Coord): number => {
   return probe.captured;
 };
 
-export const chooseCpuAction = (state: GameState): Action | null => {
-  if (state.winner || state.passCurtain) return null;
+export const chooseCpuActionSequence = (state: GameState): Action[] => {
+  if (state.winner || state.passCurtain) return [];
 
   if (state.activeSide === "go") {
+    let rngState = state.rngState;
     if (state.goPressure >= state.config.pressureReleaseAt) {
-      const roll = nextRng(state.rngState);
-      if (roll.value < 0.45) return { type: "go_release" };
+      const roll = nextRng(rngState);
+      rngState = roll.state;
+      if (roll.value < 0.45) return [{ type: "go_release" }];
     }
 
     const empties = emptyCells(state.goBoard);
@@ -27,10 +29,8 @@ export const chooseCpuAction = (state: GameState): Action | null => {
       const captured = captureCountIfPlace(state, at);
       if (captured < 0) continue;
       let score = captured * 10;
-      // Prefer center
       const center = (state.config.goSize - 1) / 2;
       score -= Math.abs(at.row - center) + Math.abs(at.col - center);
-      // Prefer extending low-liberty groups
       for (const n of neighbors(state.config.goSize, at)) {
         if (state.goBoard[n.row][n.col] === "black") {
           const { liberties } = groupAndLiberties(state.goBoard, n);
@@ -43,49 +43,18 @@ export const chooseCpuAction = (state: GameState): Action | null => {
       }
     }
 
-    if (best) return { type: "go_place", at: best };
-    return { type: "go_pass" };
+    if (best) return [{ type: "go_place", at: best }];
+    return [{ type: "go_pass" }];
   }
 
   // Shogi CPU
+  let rngState = state.rngState;
   if (state.shogiPressure >= state.config.pressureReleaseAt) {
     const empties = emptyCells(state.goBoard).length;
     if (empties >= 3) {
-      const roll = nextRng(state.rngState);
-      if (roll.value < 0.4) return { type: "shogi_release" };
-    }
-  }
-
-  // Capture invader if possible
-  for (let row = 0; row < state.shogiBoard.length; row += 1) {
-    for (let col = 0; col < state.shogiBoard.length; col += 1) {
-      const from = { row, col };
-      const moves = getLegalMoves(state.shogiBoard, from);
-      for (const to of moves) {
-        const target = state.shogiBoard[to.row][to.col];
-        if (target?.owner === "invader") {
-          return { type: "shogi_move", to }; // need select first — handled by packed helper
-        }
-      }
-    }
-  }
-
-  return chooseShogiPacked(state);
-};
-
-/** Returns a sequence-friendly single action; UI/CPU runner may need select then move. */
-export const chooseCpuActionSequence = (state: GameState): Action[] => {
-  if (state.winner || state.passCurtain) return [];
-
-  if (state.activeSide === "go") {
-    const a = chooseCpuAction(state);
-    return a ? [a] : [];
-  }
-
-  if (state.shogiPressure >= state.config.pressureReleaseAt) {
-    const empties = emptyCells(state.goBoard).length;
-    if (empties >= 3 && nextRng(state.rngState).value < 0.4) {
-      return [{ type: "shogi_release" }];
+      const roll = nextRng(rngState);
+      rngState = roll.state;
+      if (roll.value < 0.4) return [{ type: "shogi_release" }];
     }
   }
 
@@ -106,7 +75,6 @@ export const chooseCpuActionSequence = (state: GameState): Action[] => {
     }
   }
 
-  // Score moves by center control
   const center = (state.config.shogiSize - 1) / 2;
   let bestFrom: Coord | null = null;
   let bestTo: Coord | null = null;
@@ -136,22 +104,25 @@ export const chooseCpuActionSequence = (state: GameState): Action[] => {
     ];
   }
 
-  // Drop from hand
   for (const kind of ["gold", "silver", "knight", "pawn"] as HandKind[]) {
     const drops = getLegalDrops(state.shogiBoard, state.shogiHand, kind);
     if (drops.length > 0) {
-      const to = drops[0];
       return [
         { type: "shogi_select_hand", kind },
-        { type: "shogi_drop", to },
+        { type: "shogi_drop", to: drops[0] },
       ];
     }
+  }
+
+  // Last resort: spend pressure if any
+  if (state.shogiPressure >= state.config.pressureReleaseAt) {
+    return [{ type: "shogi_release" }];
   }
 
   return [];
 };
 
-const chooseShogiPacked = (state: GameState): Action | null => {
+export const chooseCpuAction = (state: GameState): Action | null => {
   const seq = chooseCpuActionSequence(state);
   return seq[0] ?? null;
 };
@@ -162,15 +133,25 @@ export const runCpuTurn = (state: GameState): GameState => {
     current = applyAction(current, { type: "dismiss_curtain" }).state;
   }
   const side = current.activeSide;
-  const seq = chooseCpuActionSequence(current);
+  let seq = chooseCpuActionSequence(current);
+  if (seq.length === 0 && side === "shogi") {
+    if (current.shogiPressure >= current.config.pressureReleaseAt) {
+      seq = [{ type: "shogi_release" }];
+    } else {
+      // Immobilized — resign as CPU
+      return applyAction(current, { type: "resign", side: "shogi" }).state;
+    }
+  }
   for (const action of seq) {
     const result = applyAction(current, action);
     current = result.state;
     if (!result.ok) break;
   }
-  // Safety: if still same side, pass for go
   if (!current.winner && current.activeSide === side && side === "go") {
     current = applyAction(current, { type: "go_pass" }).state;
+  }
+  if (!current.winner && current.activeSide === side && side === "shogi") {
+    current = applyAction(current, { type: "resign", side: "shogi" }).state;
   }
   return current;
 };
