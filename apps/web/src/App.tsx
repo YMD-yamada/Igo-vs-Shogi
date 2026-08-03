@@ -2,8 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   applyAction,
   createInitialState,
+  createMatchRecorder,
+  finalizeMatchLog,
   HANDICAP_PRESETS,
   handicapOptions,
+  recordAction,
   runCpuTurn,
   sideLabel,
   type Action,
@@ -12,12 +15,19 @@ import {
   type GameState,
   type HandicapId,
   type HandKind,
+  type MatchRecorder,
   type Side,
 } from "@kuroshiro/engine";
 import { SharedBoardView } from "./Boards";
 import { OnlineClient } from "./online";
+import {
+  downloadMatchLogs,
+  saveMatchLog,
+  summarizeLocalLogs,
+  tryUploadMatchLog,
+} from "./matchLogStore";
 
-type Screen = "menu" | "rules" | "tutorial" | "play";
+type Screen = "menu" | "rules" | "tutorial" | "play" | "logs";
 
 const HAND_LABEL: Record<HandKind, string> = {
   gold: "金",
@@ -30,7 +40,7 @@ const TUTORIAL_STEPS = [
   "同じ 9×9 盤で戦います。囲碁は空き点に黒石を打ちます。",
   "将棋の駒は呼吸点（空き隣接）が0になると囲まれて取れます。王を取れば即勝ち。",
   "将棋は駒を動かして黒石の上に乗ると石を取れます。取った石は歩として打てます。",
-  "囲碁は駒5枚捕獲、将棋は石10個捕獲が基本の勝利条件です。",
+  "囲碁は駒2枚捕獲、将棋は石6個捕獲が基本の勝利条件です。ハンデで変えられます。",
 ];
 
 export function App() {
@@ -43,10 +53,15 @@ export function App() {
   const [joinCode, setJoinCode] = useState("");
   const [onlineStatus, setOnlineStatus] = useState("");
   const [handicap, setHandicap] = useState<HandicapId>("even");
+  /** Side the CPU plays (human plays the other). */
+  const [cpuPlays, setCpuPlays] = useState<Side>("shogi");
   const [tutorialStep, setTutorialStep] = useState(0);
   const [tutorialMode, setTutorialMode] = useState(false);
+  const [logSummary, setLogSummary] = useState(() => summarizeLocalLogs());
   const clientRef = useRef<OnlineClient | null>(null);
   const modeRef = useRef<GameMode>("hotseat");
+  const recorderRef = useRef<MatchRecorder | null>(null);
+  const persistedLogIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => clientRef.current?.close();
@@ -56,7 +71,10 @@ export function App() {
     if (!state || state.mode !== "cpu" || state.winner || state.passCurtain) return;
     if (state.cpuSide && state.activeSide === state.cpuSide) {
       const timer = window.setTimeout(() => {
-        setState((prev) => (prev ? runCpuTurn(prev) : prev));
+        setState((prev) => {
+          if (!prev) return prev;
+          return runCpuTurn(prev, recorderRef.current ?? undefined);
+        });
         setMessage("CPUが着手しました");
         setGoPreview(null);
       }, 450);
@@ -69,9 +87,40 @@ export function App() {
     if (state.activeSide !== "go") setGoPreview(null);
   }, [state?.activeSide, state?.turn]);
 
+  useEffect(() => {
+    if (!state?.winner || !recorderRef.current) return;
+    if (persistedLogIdRef.current) return;
+    // Online matches are persisted by the server with full plies
+    if (state.mode === "online") {
+      persistedLogIdRef.current = "online-server";
+      return;
+    }
+    const log = finalizeMatchLog(recorderRef.current, state);
+    if (!log) return;
+    persistedLogIdRef.current = log.id;
+    saveMatchLog(log);
+    setLogSummary(summarizeLocalLogs());
+    void tryUploadMatchLog(log);
+  }, [state?.winner, state]);
+
+  const beginRecorder = (
+    next: GameState,
+    opts: { handicapId?: HandicapId; humanSide?: Side | null; roomId?: string },
+  ) => {
+    recorderRef.current = createMatchRecorder({
+      state: next,
+      handicapId: opts.handicapId,
+      humanSide: opts.humanSide,
+      roomId: opts.roomId,
+      tags: [next.mode],
+      appVersion: "1.0.0",
+    });
+    persistedLogIdRef.current = null;
+  };
+
   const startLocal = (
     mode: GameMode,
-    opts?: { tutorial?: boolean; handicapId?: HandicapId },
+    opts?: { tutorial?: boolean; handicapId?: HandicapId; cpuPlaysSide?: Side },
   ) => {
     modeRef.current = mode;
     clientRef.current?.close();
@@ -81,14 +130,20 @@ export function App() {
     const hid = opts?.handicapId ?? handicap;
     if (opts?.handicapId) setHandicap(opts.handicapId);
     const preset = HANDICAP_PRESETS[hid];
-    setState(
-      createInitialState(mode, {
-        seed: Date.now() >>> 0,
-        cpuSide: "shogi",
-        config: preset.config,
-        startingHand: preset.startingHand,
-      }),
-    );
+    const cpuSide =
+      mode === "cpu" ? (opts?.cpuPlaysSide ?? cpuPlays) : null;
+    if (opts?.cpuPlaysSide) setCpuPlays(opts.cpuPlaysSide);
+    const humanSide =
+      mode === "cpu" ? (cpuSide === "go" ? "shogi" : "go") : null;
+    const next = createInitialState(mode, {
+      seed: Date.now() >>> 0,
+      cpuSide,
+      config: preset.config,
+      startingHand: preset.startingHand,
+      removeStartingPieces: preset.removeStartingPieces,
+    });
+    beginRecorder(next, { handicapId: hid, humanSide });
+    setState(next);
     const tutorial = Boolean(opts?.tutorial);
     setTutorialMode(tutorial);
     setTutorialStep(0);
@@ -96,7 +151,7 @@ export function App() {
       tutorial
         ? "チュートリアル：盤の中央付近に黒石を打ちましょう"
         : mode === "cpu"
-          ? `あなたは囲碁側です（${preset.label}）`
+          ? `あなたは${sideLabel(humanSide!)}／CPUは${sideLabel(cpuSide!)}（${preset.label}）`
           : `端末を共有して対戦（${preset.label}）`,
     );
     setGoPreview(null);
@@ -113,7 +168,16 @@ export function App() {
       clientRef.current?.send({ type: "action", action });
       return;
     }
+    const side = state.activeSide;
+    const from = state.selectedShogi ?? undefined;
+    const handKind = state.selectedHand ?? undefined;
     const result = applyAction(state, action);
+    if (result.ok && recorderRef.current) {
+      recordAction(recorderRef.current, action, result.state, side, {
+        from,
+        handKind,
+      });
+    }
     setState(result.state);
     setMessage(result.message);
     if (action.type === "go_place" || action.type === "go_pass") {
@@ -150,6 +214,11 @@ export function App() {
         if (msg.type === "created" || msg.type === "joined") {
           setRoomId(msg.roomId);
           setMySide(msg.side);
+          beginRecorder(msg.state, {
+            handicapId: "even",
+            humanSide: msg.side,
+            roomId: msg.roomId,
+          });
           setState(msg.state);
           setTutorialMode(false);
           setScreen("play");
@@ -173,7 +242,9 @@ export function App() {
       modeRef.current = "online";
       client.send({ type: "create" });
     } catch {
-      setOnlineStatus("サーバーに接続できません。先に npm run dev:server を起動してください。");
+      setOnlineStatus(
+        "サーバーに接続できません。先に npm run dev:server を起動してください。",
+      );
     }
   };
 
@@ -190,6 +261,11 @@ export function App() {
         if (msg.type === "created" || msg.type === "joined") {
           setRoomId(msg.roomId);
           setMySide(msg.side);
+          beginRecorder(msg.state, {
+            handicapId: "even",
+            humanSide: msg.side,
+            roomId: msg.roomId,
+          });
           setState(msg.state);
           setTutorialMode(false);
           setScreen("play");
@@ -247,6 +323,32 @@ export function App() {
               {HANDICAP_PRESETS[handicap].description}
             </p>
           </fieldset>
+
+          <fieldset className="handicap-box">
+            <legend>CPUが持つ側</legend>
+            <div className="handicap-row" role="radiogroup" aria-label="CPU側">
+              {(
+                [
+                  { side: "shogi" as Side, label: "CPU=将棋（あなた囲碁）" },
+                  { side: "go" as Side, label: "CPU=囲碁（あなた将棋）" },
+                ] as const
+              ).map((opt) => (
+                <label
+                  key={opt.side}
+                  className={`handicap-chip${cpuPlays === opt.side ? " active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    name="cpuSide"
+                    checked={cpuPlays === opt.side}
+                    onChange={() => setCpuPlays(opt.side)}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <button type="button" className="primary" onClick={() => startLocal("hotseat")}>
             1台で対戦（手渡し）
           </button>
@@ -275,6 +377,58 @@ export function App() {
           <button type="button" className="secondary" onClick={() => setScreen("rules")}>
             ルール
           </button>
+          <button
+            type="button"
+            className="ghost-btn"
+            onClick={() => {
+              setLogSummary(summarizeLocalLogs());
+              setScreen("logs");
+            }}
+          >
+            対局ログ（{logSummary.total}）
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "logs") {
+    return (
+      <div className="app">
+        <header className="brand">
+          <h1>
+            対局ログ
+            <span className="en">Match logs</span>
+          </h1>
+          <p>軽量ログを貯めて、バランス改善の材料にします。</p>
+        </header>
+        <div className="rules">
+          <p>
+            端末内: <strong>{logSummary.total}</strong> 局
+          </p>
+          <p className="muted">
+            モード {JSON.stringify(logSummary.byMode)} ／ 勝敗{" "}
+            {JSON.stringify(logSummary.byWinner)}
+          </p>
+          <p>
+            サーバー起動中は CPU 対局も自動アップロードされます。オンライン対局はサーバー側に保存されます。
+          </p>
+          <p className="muted">
+            エージェントに「フィードバック適用」と伝えると、ログ集計から調整します。
+          </p>
+        </div>
+        <div className="menu">
+          <button
+            type="button"
+            className="primary"
+            disabled={logSummary.total === 0}
+            onClick={() => downloadMatchLogs()}
+          >
+            JSONLを書き出す
+          </button>
+          <button type="button" className="confirm-btn" onClick={() => setScreen("menu")}>
+            戻る
+          </button>
         </div>
       </div>
     );
@@ -299,9 +453,15 @@ export function App() {
           <button
             type="button"
             className="primary"
-            onClick={() => startLocal("cpu", { tutorial: true, handicapId: "even" })}
+            onClick={() =>
+              startLocal("cpu", {
+                tutorial: true,
+                handicapId: "even",
+                cpuPlaysSide: "shogi",
+              })
+            }
           >
-            CPUで練習開始
+            CPUで練習開始（あなた囲碁）
           </button>
           <button type="button" className="secondary" onClick={() => setScreen("rules")}>
             ルール全文
@@ -334,11 +494,19 @@ export function App() {
           </p>
           <h3>将棋</h3>
           <p>
-            自駒を動かし、黒石のマスへ進入すると石を取れます。取った石は歩の持ち駒になります。駒同士は取れません。
+            自駒を動かし、黒石のマスへ進入すると石を取れます。取った石は歩の持ち駒になります。直後の石は歩になりません。桂は石を取れません。
           </p>
           <h3>勝利</h3>
           <p>
-            囲碁：駒を累計5枚捕獲、または王捕獲／将棋合法手なし。将棋：黒石を累計10個捕獲（ハンデで変動）。
+            囲碁：駒を累計2枚捕獲、または王捕獲／将棋合法手なし。将棋：黒石を累計6個捕獲。
+          </p>
+          <h3>モード</h3>
+          <p>
+            手渡し・CPU（どちら側も可）・オンライン。終局ログはバランス改善に使います。
+          </p>
+          <h3>ハンデ</h3>
+          <p>
+            メニューで互角／やや有利／有利を選べます。オンラインは常に互角です。
           </p>
         </div>
         <div className="menu">
@@ -418,6 +586,9 @@ export function App() {
         手番：{sideLabel(state.activeSide)}
         {state.mode === "online" && roomId ? ` ／ 部屋 ${roomId}` : ""}
         {state.mode === "online" && mySide ? ` ／ あなたは${sideLabel(mySide)}` : ""}
+        {state.mode === "cpu" && state.cpuSide
+          ? ` ／ CPU=${sideLabel(state.cpuSide)}`
+          : ""}
         {state.mode !== "online" ? ` ／ ${HANDICAP_PRESETS[handicap].label}` : ""}
       </div>
 
@@ -498,6 +669,7 @@ export function App() {
           onClick={() => {
             clientRef.current?.close();
             setTutorialMode(false);
+            recorderRef.current = null;
             setScreen("menu");
             setState(null);
           }}
@@ -532,13 +704,13 @@ export function App() {
                 ? "引き分け"
                 : `${sideLabel(state.winner)}の勝ち`}
             </h2>
-            <p className="muted">黒白侵攻 — 一盤戦</p>
+            <p className="muted">対局ログを保存しました</p>
             <div className="menu" style={{ marginTop: 16 }}>
               <button
                 type="button"
                 className="primary"
                 onClick={() =>
-                  startLocal(state.mode === "online" ? "hotseat" : state.mode)
+                  startLocal(state.mode === "online" ? "cpu" : state.mode)
                 }
               >
                 もう一度
@@ -549,6 +721,7 @@ export function App() {
                 onClick={() => {
                   clientRef.current?.close();
                   setTutorialMode(false);
+                  recorderRef.current = null;
                   setScreen("menu");
                   setState(null);
                 }}

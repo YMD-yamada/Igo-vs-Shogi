@@ -6,18 +6,23 @@
 - ブランチ: `cursor/igo-shogi-hybrid-327a`（PR #2）
 - 正本パス: `C:\Users\cz7\Projects\Igo-vs-Shogi`
 - 製品名: **黒白侵攻 / Kuroshiro**
-- **一盤戦**: 共有 9×9（二盤面デザインは廃止）
+- **一盤戦**: 共有 9×9
 
 ## ルール要約
-- 囲碁: 黒石を打ち、将棋駒を囲んで取る（王取り即勝ち）
-- 将棋: 駒を動かして黒石に乗る（石取り→歩の持ち駒）
-- 勝利: 囲碁=駒5 / 将棋=石10（ハンデ可）
+- 勝利（互角）: 囲碁=駒2 / 将棋=石6（ハンデ可）
+- CPUは囲碁側・将棋側どちらでも対戦可
+- オンライン: WS+HTTP `:9877`
 
-## 実装済み
-- `packages/engine` — 共有盤エンジン + CPU + ハンデ + テスト
-- `apps/web` — 単一盤 UI / ホットシート / CPU / オンライン / チュートリアル
-- `apps/server` — WebSocket ルーム（既定 `:9877`）
-- `apps/desktop` — Electron
+## 対局ログ（長期改善）
+- スキーマ: `packages/engine/src/matchLog.ts`（MatchLog v1）
+- クライアント: localStorage + JSONL書き出し + サーバーへ任意アップロード
+- サーバー: オンライン終了時に `data/match-logs/YYYY-MM-DD.jsonl`
+- 集計: `npm run analyze:logs`
+- 手順: `docs/FEEDBACK_LOOP.md`（「フィードバック適用」でこのサイクル）
+
+## バランス
+- `scripts/balance-sim.mjs` — 互角 ≈ 囲碁46% / 将棋52%
+- ハンデ: `packages/engine/src/handicaps.ts`
 
 ## 起動
 ```bash
@@ -28,8 +33,10 @@ npm run dev:server
 ```
 
 ## 検証
-- `npm test` / `npm run smoke` OK（一盤戦リライト後）
+- `npm test` / `npm run smoke`
+- `npm run analyze:logs`
+- `BALANCE_GAMES=80 npx tsx scripts/balance-sim.mjs`
 
 ## 次の候補
-- 本番デプロイ / personal-site 掲載
-- バランス微調整・チュートリアル強化
+- 本番デプロイ（Web + 常時 WS） / personal-site 掲載
+- ログに基づく継続バランス調整

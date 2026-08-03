@@ -36,8 +36,8 @@ export interface MatchConfig {
 
 export const DEFAULT_CONFIG: MatchConfig = {
   size: 9,
-  goWinCaptures: 5,
-  shogiWinStones: 10,
+  goWinCaptures: 2,
+  shogiWinStones: 6,
   turnLimit: 100,
   onlineMoveMs: 30_000,
 };

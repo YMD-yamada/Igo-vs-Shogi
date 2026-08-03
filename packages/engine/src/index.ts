@@ -4,3 +4,4 @@ export * from "./board.js";
 export * from "./game.js";
 export * from "./ai.js";
 export * from "./rng.js";
+export * from "./matchLog.js";

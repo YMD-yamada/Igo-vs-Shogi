@@ -10,3 +10,5 @@ coverage
 .vscode
 .idea
 *.tsbuildinfo
+data/match-logs/*.jsonl
+!data/match-logs/.gitkeep

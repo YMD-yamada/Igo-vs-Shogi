@@ -64,10 +64,11 @@ const resolveWinner = (state: GameState): Outcome => {
   if (state.shogiStoneCaptures >= state.config.shogiWinStones) return "shogi";
 
   if (state.turn > state.config.turnLimit) {
-    const goScore = state.goCaptures * 2;
+    // Prefer draw unless one side clearly led without finishing
+    const goScore = state.goCaptures * 3;
     const shogiScore = state.shogiStoneCaptures;
     const diff = Math.abs(goScore - shogiScore);
-    if (diff < 2) return "draw";
+    if (diff < 4) return "draw";
     return goScore > shogiScore ? "go" : "shogi";
   }
   return null;
@@ -91,17 +92,34 @@ export const createInitialState = (
     seed?: number;
     cpuSide?: Side | null;
     startingHand?: Partial<ShogiHand>;
+    removeStartingPieces?: Array<"pawn" | "gold" | "silver" | "knight">;
   },
 ): GameState => {
   const seed = options?.seed ?? (Date.now() >>> 0);
   const config = { ...DEFAULT_CONFIG, ...options?.config };
   const hand = { ...emptyHand(), ...options?.startingHand };
+  const board = createInitialBoard(config.size);
+
+  if (options?.removeStartingPieces?.length) {
+    for (const kind of options.removeStartingPieces) {
+      outer: for (let row = 0; row < board.length; row += 1) {
+        for (let col = 0; col < board.length; col += 1) {
+          const cell = board[row][col];
+          if (cell?.type === "piece" && cell.piece.kind === kind) {
+            board[row][col] = null;
+            break outer;
+          }
+        }
+      }
+    }
+  }
+
   return {
     config,
     mode,
     turn: 1,
     activeSide: "go",
-    board: createInitialBoard(config.size),
+    board,
     shogiHand: hand,
     goCaptures: 0,
     shogiStoneCaptures: 0,
@@ -260,17 +278,30 @@ export const applyAction = (state: GameState, action: Action): ApplyResult => {
     if (!moved.ok) {
       return { state, message: moved.reason ?? "不正な手", ok: false };
     }
+    // Fresh stone still scores full point, but grants no hand (anti-snowball)
+    const fresh =
+      moved.capturedStone &&
+      state.lastGoMove &&
+      state.lastGoMove.row === action.to.row &&
+      state.lastGoMove.col === action.to.col;
     const next: GameState = {
       ...clearSelection(state),
       board: moved.board,
-      shogiStoneCaptures: state.shogiStoneCaptures + (moved.capturedStone ? 1 : 0),
-      shogiHand: moved.capturedStone
-        ? { ...state.shogiHand, pawn: state.shogiHand.pawn + 1 }
-        : state.shogiHand,
+      lastGoMove: null,
+      shogiStoneCaptures:
+        state.shogiStoneCaptures + (moved.capturedStone ? 1 : 0),
+      shogiHand:
+        moved.capturedStone && !fresh
+          ? { ...state.shogiHand, pawn: state.shogiHand.pawn + 1 }
+          : state.shogiHand,
       log: pushLog(
         state,
         `将棋: (${state.selectedShogi.row + 1},${state.selectedShogi.col + 1})→(${action.to.row + 1},${action.to.col + 1})` +
-          (moved.capturedStone ? " 石取（歩入手）" : ""),
+          (moved.capturedStone
+            ? fresh
+              ? " 石取（直後・歩なし）"
+              : " 石取（歩入手）"
+            : ""),
       ),
     };
     return finishShogi(next, moved.capturedStone ? "黒石を捕獲" : "指し完了");
@@ -293,6 +324,7 @@ export const applyAction = (state: GameState, action: Action): ApplyResult => {
       ...clearSelection(state),
       board: dropped.board,
       shogiHand: dropped.hand,
+      lastGoMove: null,
       log: pushLog(
         state,
         `将棋: 持ち駒 ${state.selectedHand} を (${action.to.row + 1},${action.to.col + 1}) に打つ`,

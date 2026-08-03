@@ -25,27 +25,31 @@ const pid = (prefix: string): string => {
 const piece = (kind: ShogiKind): ShogiPiece => ({ id: pid(kind[0]), kind });
 
 /**
- * Initial shogi camp at the bottom of a 9×9 board:
- *   · 桂 銀 金 王 金 銀 桂 ·
- *   · · 歩 · 歩 · 歩 · ·
+ * Initial shogi camp with breathing room (no instant atari):
+ *   · · · 銀 王 銀 · · ·
+ *   · · 桂 · · · 桂 · ·
+ *   · · · 金 · 金 · · ·
+ *   · · · · 歩 · · · ·
  */
 export const createInitialBoard = (size = 9): Board => {
   resetPieceIds();
   const board = createEmptyBoard(size);
-  const back = size - 1;
-  const mid = size - 2;
+  const r8 = size - 1;
+  const r7 = size - 2;
+  const r6 = size - 3;
+  const r5 = size - 4;
 
-  board[back][1] = { type: "piece", piece: piece("knight") };
-  board[back][2] = { type: "piece", piece: piece("silver") };
-  board[back][3] = { type: "piece", piece: piece("gold") };
-  board[back][4] = { type: "piece", piece: piece("king") };
-  board[back][5] = { type: "piece", piece: piece("gold") };
-  board[back][6] = { type: "piece", piece: piece("silver") };
-  board[back][7] = { type: "piece", piece: piece("knight") };
+  board[r8][3] = { type: "piece", piece: piece("silver") };
+  board[r8][4] = { type: "piece", piece: piece("king") };
+  board[r8][5] = { type: "piece", piece: piece("silver") };
 
-  board[mid][2] = { type: "piece", piece: piece("pawn") };
-  board[mid][4] = { type: "piece", piece: piece("pawn") };
-  board[mid][6] = { type: "piece", piece: piece("pawn") };
+  board[r7][2] = { type: "piece", piece: piece("knight") };
+  board[r7][6] = { type: "piece", piece: piece("knight") };
+
+  board[r6][3] = { type: "piece", piece: piece("gold") };
+  board[r6][5] = { type: "piece", piece: piece("gold") };
+
+  board[r5][4] = { type: "piece", piece: piece("pawn") };
 
   return board;
 };
@@ -79,11 +83,76 @@ export const findKing = (board: Board): Coord | null => {
   return null;
 };
 
-/** Liberties of a single shogi piece (does not connect with other pieces). */
+/**
+ * Capture groups:
+ * - Pieces orthogonally connected to the King share liberties (royal camp).
+ * - Pieces cut off from the King are solo (1-piece groups).
+ */
+export const pieceGroupAndLiberties = (
+  board: Board,
+  point: Coord,
+): { group: Coord[]; liberties: Set<string> } => {
+  const cell = board[point.row][point.col];
+  if (cell?.type !== "piece") return { group: [], liberties: new Set() };
+
+  const king = findKing(board);
+  const royal = new Set<string>();
+  if (king) {
+    const q: Coord[] = [king];
+    const seen = new Set<string>([`${king.row},${king.col}`]);
+    while (q.length > 0) {
+      const cur = q.pop()!;
+      royal.add(`${cur.row},${cur.col}`);
+      for (const n of neighbors(board.length, cur)) {
+        const key = `${n.row},${n.col}`;
+        if (seen.has(key)) continue;
+        if (board[n.row][n.col]?.type === "piece") {
+          seen.add(key);
+          q.push(n);
+        }
+      }
+    }
+  }
+
+  const pointKey = `${point.row},${point.col}`;
+  const useRoyal = royal.has(pointKey);
+
+  const seen = new Set<string>();
+  const group: Coord[] = [];
+  const liberties = new Set<string>();
+  const queue: Coord[] = [point];
+
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    const key = `${current.row},${current.col}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    group.push(current);
+
+    for (const next of neighbors(board.length, current)) {
+      const n = board[next.row][next.col];
+      if (n === null) {
+        liberties.add(`${next.row},${next.col}`);
+      } else if (n.type === "piece") {
+        const nKey = `${next.row},${next.col}`;
+        if (useRoyal) {
+          if (royal.has(nKey)) queue.push(next);
+        }
+        // solo: do not expand
+      }
+    }
+  }
+
+  return { group, liberties };
+};
+
+/** Liberties of the connected piece group containing `at`. */
 export const pieceLiberties = (board: Board, at: Coord): Coord[] => {
-  const cell = board[at.row][at.col];
-  if (cell?.type !== "piece") return [];
-  return neighbors(board.length, at).filter((n) => board[n.row][n.col] === null);
+  const { liberties } = pieceGroupAndLiberties(board, at);
+  return [...liberties].map((k) => {
+    const [row, col] = k.split(",").map(Number);
+    return { row, col };
+  });
 };
 
 /** Connected black stone group + liberty set. */
@@ -176,14 +245,25 @@ export const placeStone = (
 
   const capturedPieces: ShogiPiece[] = [];
   const capturedPoints: Coord[] = [];
+  const removed = new Set<string>();
 
   for (const adj of neighbors(size, point)) {
     const cell = next[adj.row][adj.col];
     if (cell?.type !== "piece") continue;
-    if (pieceLiberties(next, adj).length === 0) {
-      capturedPieces.push(cell.piece);
-      capturedPoints.push(adj);
-      next[adj.row][adj.col] = null;
+    const adjKey = `${adj.row},${adj.col}`;
+    if (removed.has(adjKey)) continue;
+
+    const { group, liberties } = pieceGroupAndLiberties(next, adj);
+    if (liberties.size === 0) {
+      for (const g of group) {
+        const gCell = next[g.row][g.col];
+        if (gCell?.type === "piece") {
+          capturedPieces.push(gCell.piece);
+          capturedPoints.push(g);
+          next[g.row][g.col] = null;
+          removed.add(`${g.row},${g.col}`);
+        }
+      }
     }
   }
 
@@ -245,11 +325,11 @@ const STEP: Record<Exclude<ShogiKind, "knight">, Coord[]> = {
 const inside = (size: number, c: Coord): boolean =>
   c.row >= 0 && c.row < size && c.col >= 0 && c.col < size;
 
-const canLand = (board: Board, to: Coord): boolean => {
+const canLand = (board: Board, to: Coord, kind: ShogiKind): boolean => {
   const t = board[to.row][to.col];
   if (!t) return true;
-  if (t.type === "stone") return true; // capture stone
-  return false; // cannot capture own pieces
+  if (t.type === "stone") return kind !== "knight";
+  return false;
 };
 
 export const getLegalMoves = (board: Board, from: Coord): Coord[] => {
@@ -261,12 +341,12 @@ export const getLegalMoves = (board: Board, from: Coord): Coord[] => {
     return [
       { row: from.row - 2, col: from.col - 1 },
       { row: from.row - 2, col: from.col + 1 },
-    ].filter((c) => inside(size, c) && canLand(board, c));
+    ].filter((c) => inside(size, c) && canLand(board, c, "knight"));
   }
 
   return STEP[cell.piece.kind]
     .map((d) => ({ row: from.row + d.row, col: from.col + d.col }))
-    .filter((c) => inside(size, c) && canLand(board, c));
+    .filter((c) => inside(size, c) && canLand(board, c, cell.piece.kind));
 };
 
 export const canDropPawn = (board: Board, col: number): boolean => {
@@ -306,7 +386,11 @@ export interface MoveResult {
   reason?: string;
 }
 
-export const movePiece = (board: Board, from: Coord, to: Coord): MoveResult => {
+export const movePiece = (
+  board: Board,
+  from: Coord,
+  to: Coord,
+): MoveResult => {
   const source = board[from.row]?.[from.col];
   if (source?.type !== "piece") {
     return { ok: false, board, capturedStone: false, reason: "自分の駒を選んでください。" };

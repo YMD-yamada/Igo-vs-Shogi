@@ -15,6 +15,7 @@
     "test": "npm run test -w @kuroshiro/engine",
     "smoke": "npm run test && npm run build:web",
     "smoke:online": "node scripts/online-smoke.mjs",
+    "analyze:logs": "tsx scripts/analyze-logs.mjs",
     "start:server": "npm run start -w @kuroshiro/server"
   },
   "overrides": {

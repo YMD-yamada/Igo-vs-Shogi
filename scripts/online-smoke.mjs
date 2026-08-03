@@ -60,8 +60,8 @@ if (forged.state?.winner !== "go") {
   console.error("FAIL: resign seat binding broken");
   process.exit(1);
 }
-if (afterA.state?.goBoard?.[4]?.[4] !== "black") {
-  console.error("FAIL: stone not placed");
+if (afterA.state?.board?.[4]?.[4]?.type !== "stone") {
+  console.error("FAIL: stone not placed", afterA.state?.board?.[4]?.[4]);
   process.exit(1);
 }
 
