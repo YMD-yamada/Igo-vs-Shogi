@@ -1,0 +1,26 @@
+{
+  "name": "kuroshiro",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev-web.mjs",
+    "dev:server": "npm run dev -w @kuroshiro/server",
+    "dev:desktop": "npm run dev -w @kuroshiro/desktop",
+    "build": "npm run build -w @kuroshiro/engine && npm run build -w @kuroshiro/web && npm run build -w @kuroshiro/server",
+    "build:web": "npm run build -w @kuroshiro/engine && npm run build -w @kuroshiro/web",
+    "test": "npm run test -w @kuroshiro/engine",
+    "smoke": "npm run test && npm run build:web",
+    "smoke:online": "node scripts/online-smoke.mjs",
+    "start:server": "npm run start -w @kuroshiro/server"
+  },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@4.62.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
