@@ -11,3 +11,18 @@ coverage
 .idea
 *.tsbuildinfo
 .vercel
+
+# Capacitor / mobile
+mobile/node_modules
+mobile/www
+mobile/android/.gradle
+mobile/android/app/build
+mobile/android/build
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/android/capacitor-cordova-android-plugins
+mobile/ios/App/Pods
+mobile/ios/DerivedData
+*.mobileprovision
+*.jks
+*.keystore

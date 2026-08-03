@@ -15,7 +15,10 @@
     "test": "npm run test -w @kuroshiro/engine",
     "smoke": "npm run test && npm run build:web",
     "smoke:online": "node scripts/online-smoke.mjs",
-    "start:server": "npm run start -w @kuroshiro/server"
+    "start:server": "npm run start -w @kuroshiro/server",
+    "mobile:sync": "npm --prefix mobile run prepare:native",
+    "mobile:android": "npm --prefix mobile run prepare:native && npm --prefix mobile exec -- cap open android",
+    "mobile:ios": "npm --prefix mobile run prepare:native && npm --prefix mobile exec -- cap open ios"
   },
   "overrides": {
     "rollup": "npm:@rollup/wasm-node@4.62.4"

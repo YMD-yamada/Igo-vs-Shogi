@@ -10,8 +10,8 @@
   --moss: #3d6b4f;
   --line: rgba(44, 24, 16, 0.18);
   --shadow: rgba(44, 24, 16, 0.22);
-  --display: "Shippori Mincho", "Hiragino Mincho ProN", serif;
-  --body: "Zen Kaku Gothic New", "Hiragino Sans", sans-serif;
+  --display: "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", "Noto Serif JP", serif;
+  --body: "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Zen Kaku Gothic New", "Noto Sans JP", sans-serif;
   --cta-size: 56px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }

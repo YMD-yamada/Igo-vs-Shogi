@@ -1,0 +1,26 @@
+{
+  "name": "@kuroshiro/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "黒白侵攻 Capacitor shell for App Store / Google Play",
+  "scripts": {
+    "prepare:www": "node scripts/prepare-www.mjs",
+    "prepare:native": "npm run prepare:www && npx cap sync",
+    "cap:sync": "npx cap sync",
+    "cap:android": "npm run prepare:native && npx cap open android",
+    "cap:ios": "npm run prepare:native && npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.6.8",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.6.8",
+    "@capacitor/haptics": "^7.0.5",
+    "@capacitor/ios": "^7.6.8",
+    "@capacitor/keyboard": "^7.0.6",
+    "@capacitor/splash-screen": "^7.0.5",
+    "@capacitor/status-bar": "^7.0.6"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.8"
+  }
+}

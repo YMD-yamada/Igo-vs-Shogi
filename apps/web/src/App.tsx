@@ -15,7 +15,7 @@ import {
   type Side,
 } from "@kuroshiro/engine";
 import { GoBoardView, ShogiBoardView } from "./Boards";
-import { OnlineClient } from "./online";
+import { isOnlineAvailable, OnlineClient } from "./online";
 
 type Screen = "menu" | "rules" | "tutorial" | "play";
 
@@ -141,6 +141,10 @@ export function App() {
   };
 
   const createOnline = async () => {
+    if (!isOnlineAvailable()) {
+      setOnlineStatus("オンラインサーバー未設定です（開発時は npm run dev:server）");
+      return;
+    }
     setOnlineStatus("接続中…");
     const client = new OnlineClient();
     clientRef.current = client;
@@ -178,6 +182,10 @@ export function App() {
   };
 
   const joinOnline = async () => {
+    if (!isOnlineAvailable()) {
+      setOnlineStatus("オンラインサーバー未設定です（開発時は npm run dev:server）");
+      return;
+    }
     if (!joinCode.trim()) {
       setOnlineStatus("ルームコードを入力してください");
       return;
@@ -251,22 +259,28 @@ export function App() {
           <button type="button" className="secondary" onClick={() => setScreen("tutorial")}>
             はじめて（チュートリアル）
           </button>
-          <div className="online-box">
-            <button type="button" className="secondary" onClick={() => void createOnline()}>
-              オンライン部屋を作る
-            </button>
-            <input
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="ルームコード"
-              maxLength={6}
-              aria-label="ルームコード"
-            />
-            <button type="button" className="secondary" onClick={() => void joinOnline()}>
-              コードで参加
-            </button>
-            {onlineStatus && <div className="muted">{onlineStatus}</div>}
-          </div>
+          {isOnlineAvailable() ? (
+            <div className="online-box">
+              <button type="button" className="secondary" onClick={() => void createOnline()}>
+                オンライン部屋を作る
+              </button>
+              <input
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="ルームコード"
+                maxLength={6}
+                aria-label="ルームコード"
+              />
+              <button type="button" className="secondary" onClick={() => void joinOnline()}>
+                コードで参加
+              </button>
+              {onlineStatus && <div className="muted">{onlineStatus}</div>}
+            </div>
+          ) : (
+            <p className="muted">
+              オンライン対戦はサーバー公開後に有効になります。いまは手渡し／CPUで遊べます。
+            </p>
+          )}
           <button type="button" className="secondary" onClick={() => setScreen("rules")}>
             ルール
           </button>

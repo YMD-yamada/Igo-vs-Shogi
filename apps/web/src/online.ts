@@ -15,11 +15,17 @@ export type ClientCommand =
 
 const defaultUrl = () => {
   const env = import.meta.env.VITE_WS_URL as string | undefined;
-  if (env) return env;
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  const host = location.hostname;
-  return `${proto}://${host}:9877`;
+  if (env?.trim()) return env.trim();
+  // Local dev only: same-host WS. Production / native require VITE_WS_URL.
+  if (import.meta.env.DEV) {
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${location.hostname}:9877`;
+  }
+  return "";
 };
+
+/** Online rooms need an explicit WS endpoint outside local dev. */
+export const isOnlineAvailable = (): boolean => Boolean(defaultUrl());
 
 export class OnlineClient {
   private ws: WebSocket | null = null;
@@ -30,6 +36,9 @@ export class OnlineClient {
   }
 
   connect(onMessage: (msg: OnlineMessage) => void, onClose?: () => void): Promise<void> {
+    if (!this.url) {
+      return Promise.reject(new Error("オンラインサーバー未設定です"));
+    }
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(this.url);
       this.ws = ws;

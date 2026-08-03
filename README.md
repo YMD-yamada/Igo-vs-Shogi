@@ -1,10 +1,14 @@
 ﻿# 黒白侵攻 / Kuroshiro
 
-囲碁と将棋の非対称対戦ゲーム。スマホ1台の手渡し、CPU戦、オンライン対戦、Web / デスクトップに対応。
+囲碁と将棋の非対称対戦ゲーム。スマホ1台の手渡し、CPU戦、オンライン対戦、Web / デスクトップ / ストア向けネイティブに対応。
+
+- Web: https://kuroshiro-omega.vercel.app
+- ストア準備: `docs/RELEASE_FLOW.md` / `mobile/store/`
 
 ## 必要環境
 
 - Node.js 20+
+- ストア実機ビルド: Android Studio / Xcode（iOS は macOS）
 
 ## セットアップ
 
@@ -25,6 +29,11 @@ npm run dev:server
 
 # デスクトップ（Electron・先に Web dev を起動）
 npm run dev:desktop
+
+# ネイティブ（Capacitor・静的バンドル）
+npm run mobile:sync
+npm run mobile:android
+npm run mobile:ios
 ```
 
 ## テスト / スモーク
@@ -42,10 +51,12 @@ npm run smoke
 | `apps/web` | Vite + React + PWA |
 | `apps/server` | WebSocket ルームサーバー |
 | `apps/desktop` | Electron ラッパー |
+| `mobile/` | Capacitor（`app.ymd.kuroshiro`） |
 | `docs/DESIGN.md` | ルール概要 |
+| `docs/RELEASE_FLOW.md` | App Store / Play 公開手順 |
 
 ## 遊び方（最短）
 
 1. **1台で対戦** — 着手後に手渡しカーテンが出ます
 2. **CPU** — あなたは囲碁側
-3. **オンライン** — 部屋を作成して6桁コードを共有（サーバー起動が必要）
+3. **オンライン** — `VITE_WS_URL`（またはローカル `npm run dev:server`）があるときのみ。部屋コードを共有
