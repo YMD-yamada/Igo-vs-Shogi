@@ -11,7 +11,7 @@ function once(ws) {
 }
 
 function open() {
-  const ws = new WebSocket("ws://127.0.0.1:8787");
+  const ws = new WebSocket("ws://127.0.0.1:9877");
   return new Promise((resolve, reject) => {
     ws.on("open", () => resolve(ws));
     ws.on("error", reject);

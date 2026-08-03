@@ -120,4 +120,14 @@ describe("game integration", () => {
     expect(result.state.shogiInvaderCaptures).toBe(1);
     expect(result.state.shogiHand.pawn).toBe(1);
   });
+
+  it("applies shogi-favor handicap starting hand", () => {
+    const state = createInitialState("cpu", {
+      seed: 5,
+      config: { shogiWinInvaderCaptures: 3 },
+      startingHand: { pawn: 2 },
+    });
+    expect(state.shogiHand.pawn).toBe(2);
+    expect(state.config.shogiWinInvaderCaptures).toBe(3);
+  });
 });

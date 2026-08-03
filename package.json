@@ -17,6 +17,9 @@
     "smoke:online": "node scripts/online-smoke.mjs",
     "start:server": "npm run start -w @kuroshiro/server"
   },
+  "overrides": {
+    "rollup": "npm:@rollup/wasm-node@4.62.4"
+  },
   "engines": {
     "node": ">=20"
   }

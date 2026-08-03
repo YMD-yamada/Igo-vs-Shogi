@@ -2,19 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import {
   applyAction,
   createInitialState,
+  HANDICAP_PRESETS,
+  handicapOptions,
   runCpuTurn,
   sideLabel,
   type Action,
   type Coord,
   type GameMode,
   type GameState,
+  type HandicapId,
   type HandKind,
   type Side,
 } from "@kuroshiro/engine";
 import { GoBoardView, ShogiBoardView } from "./Boards";
 import { OnlineClient } from "./online";
 
-type Screen = "menu" | "rules" | "play";
+type Screen = "menu" | "rules" | "tutorial" | "play";
 
 const HAND_LABEL: Record<HandKind, string> = {
   gold: "金",
@@ -22,6 +25,13 @@ const HAND_LABEL: Record<HandKind, string> = {
   knight: "桂",
   pawn: "歩",
 };
+
+const TUTORIAL_STEPS = [
+  "囲碁側が先手。空き点をタップして「打つ」で黒石を置きます。",
+  "白石を囲んで取ると圧力が溜まり、将棋盤へ侵攻駒が落ちます。",
+  "将棋は駒を選んで動かします。侵攻駒を取ると歩が手に入り、囲碁盤へ白石が落ちます。",
+  "圧力が3以上なら「圧力解放」で大きく干渉できます。勝利条件はルール画面へ。",
+];
 
 export function App() {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -32,6 +42,9 @@ export function App() {
   const [roomId, setRoomId] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [onlineStatus, setOnlineStatus] = useState("");
+  const [handicap, setHandicap] = useState<HandicapId>("even");
+  const [tutorialStep, setTutorialStep] = useState(0);
+  const [tutorialMode, setTutorialMode] = useState(false);
   const clientRef = useRef<OnlineClient | null>(null);
   const modeRef = useRef<GameMode>("hotseat");
 
@@ -56,16 +69,42 @@ export function App() {
     if (state.activeSide !== "go") setGoPreview(null);
   }, [state?.activeSide, state?.turn]);
 
-  const startLocal = (mode: GameMode) => {
+  const startLocal = (
+    mode: GameMode,
+    opts?: { tutorial?: boolean; handicapId?: HandicapId },
+  ) => {
     modeRef.current = mode;
     clientRef.current?.close();
     clientRef.current = null;
     setMySide(null);
     setRoomId("");
-    setState(createInitialState(mode, { seed: Date.now() >>> 0, cpuSide: "shogi" }));
-    setMessage(mode === "cpu" ? "あなたは囲碁側です" : "端末を共有して対戦");
+    const hid = opts?.handicapId ?? handicap;
+    if (opts?.handicapId) setHandicap(opts.handicapId);
+    const preset = HANDICAP_PRESETS[hid];
+    setState(
+      createInitialState(mode, {
+        seed: Date.now() >>> 0,
+        cpuSide: "shogi",
+        config: preset.config,
+        startingHand: preset.startingHand,
+      }),
+    );
+    const tutorial = Boolean(opts?.tutorial);
+    setTutorialMode(tutorial);
+    setTutorialStep(0);
+    setMessage(
+      tutorial
+        ? "チュートリアル：まずは囲碁盤の中央付近に打ちましょう"
+        : mode === "cpu"
+          ? `あなたは囲碁側です（${preset.label}）`
+          : `端末を共有して対戦（${preset.label}）`,
+    );
     setGoPreview(null);
     setScreen("play");
+  };
+
+  const advanceTutorial = () => {
+    setTutorialStep((s) => Math.min(s + 1, TUTORIAL_STEPS.length - 1));
   };
 
   const dispatch = (action: Action) => {
@@ -79,6 +118,16 @@ export function App() {
     setMessage(result.message);
     if (action.type === "go_place" || action.type === "go_pass" || action.type === "go_release") {
       setGoPreview(null);
+    }
+    if (tutorialMode && result.ok) {
+      if (
+        action.type === "go_place" ||
+        action.type === "shogi_move" ||
+        action.type === "go_release" ||
+        action.type === "shogi_release"
+      ) {
+        advanceTutorial();
+      }
     }
   };
 
@@ -101,6 +150,7 @@ export function App() {
           setRoomId(msg.roomId);
           setMySide(msg.side);
           setState(msg.state);
+          setTutorialMode(false);
           setScreen("play");
           setOnlineStatus("");
           setMessage(
@@ -141,6 +191,7 @@ export function App() {
           setRoomId(msg.roomId);
           setMySide(msg.side);
           setState(msg.state);
+          setTutorialMode(false);
           setScreen("play");
           setOnlineStatus("");
           setMessage(`ルーム ${msg.roomId} に参加（あなたは${sideLabel(msg.side)}）`);
@@ -173,11 +224,32 @@ export function App() {
           <p>囲碁の包囲と将棋の切り込みが、相手の盤へ干渉する非対称バトル。</p>
         </header>
         <div className="menu">
+          <fieldset className="handicap-box">
+            <legend>ハンデ（ローカル／CPU）</legend>
+            <div className="handicap-row" role="radiogroup" aria-label="ハンデ">
+              {handicapOptions().map((preset) => (
+                <label key={preset.id} className={`handicap-chip${handicap === preset.id ? " active" : ""}`}>
+                  <input
+                    type="radio"
+                    name="handicap"
+                    value={preset.id}
+                    checked={handicap === preset.id}
+                    onChange={() => setHandicap(preset.id)}
+                  />
+                  <span>{preset.label}</span>
+                </label>
+              ))}
+            </div>
+            <p className="muted handicap-desc">{HANDICAP_PRESETS[handicap].description}</p>
+          </fieldset>
           <button type="button" className="primary" onClick={() => startLocal("hotseat")}>
             1台で対戦（手渡し）
           </button>
           <button type="button" className="secondary" onClick={() => startLocal("cpu")}>
             CPUと対戦
+          </button>
+          <button type="button" className="secondary" onClick={() => setScreen("tutorial")}>
+            はじめて（チュートリアル）
           </button>
           <div className="online-box">
             <button type="button" className="secondary" onClick={() => void createOnline()}>
@@ -197,6 +269,40 @@ export function App() {
           </div>
           <button type="button" className="secondary" onClick={() => setScreen("rules")}>
             ルール
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "tutorial") {
+    return (
+      <div className="app">
+        <header className="brand">
+          <h1>
+            はじめて
+            <span className="en">Tutorial</span>
+          </h1>
+          <p>短く覚えて、CPU戦で手を動かしてみましょう。</p>
+        </header>
+        <ol className="tutorial-list">
+          {TUTORIAL_STEPS.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+        <div className="menu">
+          <button
+            type="button"
+            className="primary"
+            onClick={() => startLocal("cpu", { tutorial: true, handicapId: "even" })}
+          >
+            CPUで練習開始
+          </button>
+          <button type="button" className="secondary" onClick={() => setScreen("rules")}>
+            ルール全文
+          </button>
+          <button type="button" className="ghost-btn" onClick={() => setScreen("menu")}>
+            戻る
           </button>
         </div>
       </div>
@@ -224,12 +330,21 @@ export function App() {
           </p>
           <h3>勝利</h3>
           <p>
-            囲碁は白石累計6捕獲、または将棋が合法手を失ったとき。将棋は侵攻駒4捕獲（取ると歩が手に入る）、または一度広がった黒石が大きく減ったとき。
+            囲碁は白石累計6捕獲（ハンデで変動）、または将棋が合法手を失ったとき。将棋は侵攻駒4捕獲（取ると歩が手に入る／ハンデで変動）、または一度広がった黒石が大きく減ったとき。
+          </p>
+          <h3>ハンデ</h3>
+          <p>
+            メニューの「囲碁有利／将棋有利」で勝利条件や持ち駒を変えられます。オンラインは常に互角です。
           </p>
         </div>
-        <button type="button" className="confirm-btn" onClick={() => setScreen("menu")}>
-          戻る
-        </button>
+        <div className="menu">
+          <button type="button" className="primary" onClick={() => setScreen("tutorial")}>
+            チュートリアルへ
+          </button>
+          <button type="button" className="confirm-btn" onClick={() => setScreen("menu")}>
+            戻る
+          </button>
+        </div>
       </div>
     );
   }
@@ -277,6 +392,18 @@ export function App() {
         </h1>
       </header>
 
+      {tutorialMode && (
+        <div className="tutorial-banner" role="status">
+          <strong>
+            ガイド {tutorialStep + 1}/{TUTORIAL_STEPS.length}
+          </strong>
+          <p>{TUTORIAL_STEPS[tutorialStep]}</p>
+          <button type="button" className="ghost-btn" onClick={() => setTutorialMode(false)}>
+            ガイドを閉じる
+          </button>
+        </div>
+      )}
+
       <div className="hud">
         <div className="hud-card go">
           <strong>囲碁</strong>
@@ -296,6 +423,7 @@ export function App() {
         手番：{sideLabel(state.activeSide)}
         {state.mode === "online" && roomId ? ` ／ 部屋 ${roomId}` : ""}
         {state.mode === "online" && mySide ? ` ／ あなたは${sideLabel(mySide)}` : ""}
+        {state.mode !== "online" ? ` ／ ${HANDICAP_PRESETS[handicap].label}` : ""}
       </div>
 
       {message && <div className="muted">{message}</div>}
@@ -408,6 +536,7 @@ export function App() {
           className="ghost-btn"
           onClick={() => {
             clientRef.current?.close();
+            setTutorialMode(false);
             setScreen("menu");
             setState(null);
           }}
@@ -444,7 +573,11 @@ export function App() {
             </h2>
             <p className="muted">黒白侵攻 — Kuroshiro</p>
             <div className="menu" style={{ marginTop: 16 }}>
-              <button type="button" className="primary" onClick={() => startLocal(state.mode === "online" ? "hotseat" : state.mode)}>
+              <button
+                type="button"
+                className="primary"
+                onClick={() => startLocal(state.mode === "online" ? "hotseat" : state.mode)}
+              >
                 もう一度
               </button>
               <button
@@ -452,6 +585,7 @@ export function App() {
                 className="secondary"
                 onClick={() => {
                   clientRef.current?.close();
+                  setTutorialMode(false);
                   setScreen("menu");
                   setState(null);
                 }}

@@ -21,7 +21,7 @@ interface Room {
   turnDeadline: ReturnType<typeof setTimeout> | null;
 }
 
-const PORT = Number(process.env.PORT ?? 8787);
+const PORT = Number(process.env.PORT ?? 9877);
 const rooms = new Map<string, Room>();
 const codeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 

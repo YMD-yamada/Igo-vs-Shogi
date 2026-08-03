@@ -27,6 +27,7 @@ import type {
   HandKind,
   MatchConfig,
   Outcome,
+  ShogiHand,
   Side,
 } from "./types.js";
 import { DEFAULT_CONFIG } from "./types.js";
@@ -240,12 +241,20 @@ export const createInitialState = (
   mode: GameMode = "hotseat",
   options?: {
     config?: Partial<MatchConfig>;
+    startingHand?: Partial<ShogiHand>;
     seed?: number;
     cpuSide?: Side | null;
   },
 ): GameState => {
   const seed = options?.seed ?? (Date.now() >>> 0);
   const config = { ...DEFAULT_CONFIG, ...options?.config };
+  const hand = emptyHand();
+  if (options?.startingHand) {
+    for (const key of Object.keys(options.startingHand) as (keyof ShogiHand)[]) {
+      const n = options.startingHand[key];
+      if (typeof n === "number" && n > 0) hand[key] = n;
+    }
+  }
   return {
     config,
     mode,
@@ -253,7 +262,7 @@ export const createInitialState = (
     activeSide: "go",
     goBoard: createGoBoard(config.goSize),
     shogiBoard: createInitialShogiBoard(config.shogiSize),
-    shogiHand: emptyHand(),
+    shogiHand: hand,
     goCaptures: 0,
     shogiInvaderCaptures: 0,
     goPressure: 0,

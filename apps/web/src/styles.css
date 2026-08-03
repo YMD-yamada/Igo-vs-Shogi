@@ -142,6 +142,95 @@ button {
   animation: slide-up 0.55s ease both;
 }
 
+.handicap-box {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.handicap-box legend {
+  padding: 0 6px;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.handicap-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.handicap-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.handicap-chip input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.handicap-chip.active {
+  border-color: var(--wood-dark);
+  background: rgba(201, 164, 108, 0.35);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.handicap-desc {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+}
+
+.tutorial-list {
+  margin: 0;
+  padding: 12px 12px 12px 1.6rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  line-height: 1.55;
+  animation: slide-up 0.45s ease both;
+}
+
+.tutorial-list li + li {
+  margin-top: 8px;
+}
+
+.tutorial-banner {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(36, 59, 85, 0.12), rgba(194, 59, 34, 0.1));
+  border: 1px solid var(--line);
+  animation: slide-up 0.4s ease both;
+}
+
+.tutorial-banner strong {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--display);
+}
+
+.tutorial-banner p {
+  margin: 0 0 8px;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
+
+.tutorial-banner .ghost-btn {
+  padding: 8px 12px;
+}
+
 .menu button,
 .toolbar button,
 .confirm-btn,

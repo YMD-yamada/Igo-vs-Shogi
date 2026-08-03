@@ -1,4 +1,4 @@
-# 黒白侵攻 / Kuroshiro
+﻿# 黒白侵攻 / Kuroshiro
 
 囲碁と将棋の非対称対戦ゲーム。スマホ1台の手渡し、CPU戦、オンライン対戦、Web / デスクトップに対応。
 
@@ -20,7 +20,7 @@ npm run build -w @kuroshiro/engine
 npm run dev
 # 追加 Vite フラグ例: npm run dev -- --strictPort
 
-# オンライン用サーバー（別ターミナル・既定 :8787）
+# オンライン用サーバー（別ターミナル・既定 :9877）
 npm run dev:server
 
 # デスクトップ（Electron・先に Web dev を起動）

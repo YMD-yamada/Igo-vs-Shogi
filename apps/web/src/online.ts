@@ -18,7 +18,7 @@ const defaultUrl = () => {
   if (env) return env;
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const host = location.hostname;
-  return `${proto}://${host}:8787`;
+  return `${proto}://${host}:9877`;
 };
 
 export class OnlineClient {
