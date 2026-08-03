@@ -330,21 +330,6 @@ button {
   gap: 12px;
 }
 
-.boards.focus-shogi .shogi-panel {
-  order: -1;
-}
-
-.boards .panel:not(.active) {
-  opacity: 0.72;
-  transform: scale(0.985);
-  transition: opacity 0.25s ease, transform 0.25s ease, outline-color 0.25s ease;
-}
-
-.boards .panel.active {
-  opacity: 1;
-  transform: none;
-}
-
 .panel {
   padding: 12px;
   border-radius: 14px;
@@ -375,13 +360,14 @@ button {
   font-weight: 500;
 }
 
-.go-board {
+.shared-board {
   --cells: 9;
   aspect-ratio: 1;
   width: 100%;
+  max-width: 520px;
   margin: 0 auto;
   background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.2), transparent 40%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.22), transparent 42%),
     var(--wood);
   border: 3px solid var(--wood-dark);
   border-radius: 4px;
@@ -392,19 +378,26 @@ button {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
-.go-cell {
+.cell {
   position: relative;
   touch-action: manipulation;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
-.go-cell::before,
-.go-cell::after {
+.cell::before,
+.cell::after {
   content: "";
   position: absolute;
   background: rgba(44, 24, 16, 0.55);
+  pointer-events: none;
 }
 
-.go-cell::before {
+.cell::before {
   left: 50%;
   top: 0;
   bottom: 0;
@@ -412,7 +405,7 @@ button {
   transform: translateX(-50%);
 }
 
-.go-cell::after {
+.cell::after {
   top: 50%;
   left: 0;
   right: 0;
@@ -420,9 +413,17 @@ button {
   transform: translateY(-50%);
 }
 
+.cell.legal {
+  box-shadow: inset 0 0 0 2px var(--moss);
+}
+
+.cell.selected {
+  box-shadow: inset 0 0 0 2px var(--vermilion);
+}
+
 .stone {
   position: absolute;
-  inset: 12%;
+  inset: 14%;
   border-radius: 50%;
   z-index: 1;
   animation: stone-place 0.22s ease both;
@@ -433,71 +434,31 @@ button {
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.35);
 }
 
-.stone.white {
-  background: radial-gradient(circle at 32% 28%, #fff, #e8e0d4 60%, #cfc3b0);
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(44, 24, 16, 0.25);
-}
-
 .stone.ghost {
   opacity: 0.45;
   animation: none;
 }
 
-.shogi-board {
-  --cells: 5;
-  aspect-ratio: 1;
-  width: min(100%, 360px);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(var(--cells), 1fr);
-  grid-template-rows: repeat(var(--cells), 1fr);
-  gap: 2px;
-  background: var(--wood-dark);
-  border: 3px solid var(--wood-dark);
-  border-radius: 4px;
-  padding: 2px;
-}
-
-.shogi-cell {
-  background: linear-gradient(180deg, #f0d9a8, #e2c48a);
-  display: grid;
-  place-items: center;
-  position: relative;
-  touch-action: manipulation;
-  min-height: 0;
-}
-
-.shogi-cell.legal {
-  box-shadow: inset 0 0 0 2px var(--moss);
-}
-
-.shogi-cell.selected {
-  box-shadow: inset 0 0 0 2px var(--vermilion);
-}
-
 .piece {
-  width: 78%;
+  width: 72%;
   aspect-ratio: 5 / 6;
   clip-path: polygon(50% 0%, 92% 18%, 84% 100%, 16% 100%, 8% 18%);
   display: grid;
   place-items: center;
   font-family: var(--display);
   font-weight: 700;
-  font-size: clamp(0.75rem, 3.6vw, 1rem);
+  font-size: clamp(0.65rem, 3.2vw, 0.95rem);
   background: linear-gradient(180deg, #fff8e8, #f0d7a4);
   color: var(--ink);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   animation: stone-place 0.2s ease both;
+  z-index: 2;
+  position: relative;
 }
 
-.piece.invader {
-  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  background: linear-gradient(180deg, #2b455f, #1a2a3a);
-  color: #f3e6d0;
-  aspect-ratio: 1;
-  width: 62%;
-  font-size: 0.7rem;
+.piece.king {
+  background: linear-gradient(180deg, #ffe8d0, #f0b070);
+  color: var(--vermilion);
 }
 
 .hand-row {
@@ -657,11 +618,6 @@ button {
 
 @media (min-width: 860px) {
   .app {
-    max-width: 980px;
-  }
-
-  .boards {
-    grid-template-columns: 1.2fr 0.9fr;
-    align-items: start;
+    max-width: 640px;
   }
 }

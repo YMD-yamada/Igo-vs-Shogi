@@ -6,51 +6,39 @@ export interface Coord {
   col: number;
 }
 
-export type GoStone = "black" | "white";
-export type GoBoard = (GoStone | null)[][];
-
-export type ShogiOwner = "shogi" | "invader";
-export type ShogiKind = "king" | "gold" | "silver" | "knight" | "pawn" | "invader";
+export type ShogiKind = "king" | "gold" | "silver" | "knight" | "pawn";
+export type HandKind = "gold" | "silver" | "knight" | "pawn";
 
 export interface ShogiPiece {
   id: string;
-  owner: ShogiOwner;
   kind: ShogiKind;
 }
 
-export type ShogiBoard = (ShogiPiece | null)[][];
+/** Shared board cell: Go stone or Shogi piece. */
+export type Cell =
+  | { type: "stone" }
+  | { type: "piece"; piece: ShogiPiece }
+  | null;
 
-export type HandKind = "gold" | "silver" | "knight" | "pawn";
+export type Board = Cell[][];
 
 export type ShogiHand = Record<HandKind, number>;
 
 export interface MatchConfig {
-  goSize: number;
-  shogiSize: number;
+  size: number;
+  /** Go wins by capturing this many shogi pieces (King is instant). */
   goWinCaptures: number;
-  shogiWinInvaderCaptures: number;
-  dropPerInvader: number;
-  pressureReleaseAt: number;
-  pressureMax: number;
+  /** Shogi wins by capturing this many black stones. */
+  shogiWinStones: number;
   turnLimit: number;
-  blackStoneFloor: number;
-  maxInvaderDropPerMove: number;
-  maxErosionDropPerMove: number;
   onlineMoveMs: number;
 }
 
 export const DEFAULT_CONFIG: MatchConfig = {
-  goSize: 9,
-  shogiSize: 5,
-  goWinCaptures: 6,
-  shogiWinInvaderCaptures: 4,
-  dropPerInvader: 2,
-  pressureReleaseAt: 3,
-  pressureMax: 5,
-  turnLimit: 80,
-  blackStoneFloor: 8,
-  maxInvaderDropPerMove: 2,
-  maxErosionDropPerMove: 5,
+  size: 9,
+  goWinCaptures: 5,
+  shogiWinStones: 10,
+  turnLimit: 100,
   onlineMoveMs: 30_000,
 };
 
@@ -61,15 +49,10 @@ export interface GameState {
   mode: GameMode;
   turn: number;
   activeSide: Side;
-  goBoard: GoBoard;
-  shogiBoard: ShogiBoard;
+  board: Board;
   shogiHand: ShogiHand;
   goCaptures: number;
-  shogiInvaderCaptures: number;
-  goPressure: number;
-  shogiPressure: number;
-  /** Peak black stone count — used for black-floor win fairness */
-  peakBlackStones: number;
+  shogiStoneCaptures: number;
   lastGoMove: Coord | null;
   koPoint: Coord | null;
   selectedShogi: Coord | null;
@@ -86,12 +69,10 @@ export interface GameState {
 export type Action =
   | { type: "go_place"; at: Coord }
   | { type: "go_pass" }
-  | { type: "go_release" }
   | { type: "shogi_select"; at: Coord }
   | { type: "shogi_select_hand"; kind: HandKind }
   | { type: "shogi_move"; to: Coord }
   | { type: "shogi_drop"; to: Coord }
-  | { type: "shogi_release" }
   | { type: "clear_selection" }
   | { type: "dismiss_curtain" }
   | { type: "resign"; side: Side };

@@ -1,40 +1,41 @@
 import { applyAction } from "./game.js";
-import { emptyCells, groupAndLiberties, neighbors, placeStone } from "./goEngine.js";
-import { getLegalDrops, getLegalMoves } from "./shogiEngine.js";
+import {
+  emptyCells,
+  getLegalDrops,
+  getLegalMoves,
+  neighbors,
+  pieceLiberties,
+  placeStone,
+  stoneGroupAndLiberties,
+} from "./board.js";
 import { nextRng } from "./rng.js";
 import type { Action, Coord, GameState, HandKind } from "./types.js";
-
-const captureCountIfPlace = (state: GameState, at: Coord): number => {
-  const probe = placeStone(state.goBoard, at, "black", state.koPoint);
-  if (!probe.ok) return -1;
-  return probe.captured;
-};
 
 export const chooseCpuActionSequence = (state: GameState): Action[] => {
   if (state.winner || state.passCurtain) return [];
 
   if (state.activeSide === "go") {
-    let rngState = state.rngState;
-    if (state.goPressure >= state.config.pressureReleaseAt) {
-      const roll = nextRng(rngState);
-      rngState = roll.state;
-      if (roll.value < 0.45) return [{ type: "go_release" }];
-    }
-
-    const empties = emptyCells(state.goBoard);
+    const empties = emptyCells(state.board);
     let best: Coord | null = null;
     let bestScore = -999;
 
     for (const at of empties) {
-      const captured = captureCountIfPlace(state, at);
-      if (captured < 0) continue;
-      let score = captured * 10;
-      const center = (state.config.goSize - 1) / 2;
-      score -= Math.abs(at.row - center) + Math.abs(at.col - center);
-      for (const n of neighbors(state.config.goSize, at)) {
-        if (state.goBoard[n.row][n.col] === "black") {
-          const { liberties } = groupAndLiberties(state.goBoard, n);
-          if (liberties.size <= 2) score += 3;
+      const probe = placeStone(state.board, at, state.koPoint);
+      if (!probe.ok) continue;
+      let score = probe.capturedPieces.length * 20;
+      if (probe.capturedPieces.some((p) => p.kind === "king")) score += 1000;
+      const center = (state.config.size - 1) / 2;
+      score -= (Math.abs(at.row - center) + Math.abs(at.col - center)) * 0.4;
+      // Prefer tightening pieces with few liberties
+      for (const n of neighbors(state.config.size, at)) {
+        const cell = state.board[n.row][n.col];
+        if (cell?.type === "piece") {
+          const libs = pieceLiberties(state.board, n).length;
+          if (libs <= 2) score += 6 - libs;
+        }
+        if (cell?.type === "stone") {
+          const { liberties } = stoneGroupAndLiberties(state.board, n);
+          if (liberties.size <= 2) score += 2;
         }
       }
       if (score > bestScore) {
@@ -42,30 +43,18 @@ export const chooseCpuActionSequence = (state: GameState): Action[] => {
         best = at;
       }
     }
-
     if (best) return [{ type: "go_place", at: best }];
     return [{ type: "go_pass" }];
   }
 
-  // Shogi CPU
-  let rngState = state.rngState;
-  if (state.shogiPressure >= state.config.pressureReleaseAt) {
-    const empties = emptyCells(state.goBoard).length;
-    if (empties >= 3) {
-      const roll = nextRng(rngState);
-      rngState = roll.state;
-      if (roll.value < 0.4) return [{ type: "shogi_release" }];
-    }
-  }
-
-  // Prefer capturing invaders
-  for (let row = 0; row < state.shogiBoard.length; row += 1) {
-    for (let col = 0; col < state.shogiBoard.length; col += 1) {
+  // Prefer capturing stones
+  for (let row = 0; row < state.board.length; row += 1) {
+    for (let col = 0; col < state.board.length; col += 1) {
       const from = { row, col };
-      const cell = state.shogiBoard[row][col];
-      if (!cell || cell.owner !== "shogi") continue;
-      for (const to of getLegalMoves(state.shogiBoard, from)) {
-        if (state.shogiBoard[to.row][to.col]?.owner === "invader") {
+      const cell = state.board[row][col];
+      if (cell?.type !== "piece") continue;
+      for (const to of getLegalMoves(state.board, from)) {
+        if (state.board[to.row][to.col]?.type === "stone") {
           return [
             { type: "shogi_select", at: from },
             { type: "shogi_move", to },
@@ -75,19 +64,29 @@ export const chooseCpuActionSequence = (state: GameState): Action[] => {
     }
   }
 
-  const center = (state.config.shogiSize - 1) / 2;
+  // Escape low-liberty pieces / improve king safety
+  const center = (state.config.size - 1) / 2;
   let bestFrom: Coord | null = null;
   let bestTo: Coord | null = null;
   let best = -999;
 
-  for (let row = 0; row < state.shogiBoard.length; row += 1) {
-    for (let col = 0; col < state.shogiBoard.length; col += 1) {
+  for (let row = 0; row < state.board.length; row += 1) {
+    for (let col = 0; col < state.board.length; col += 1) {
       const from = { row, col };
-      const cell = state.shogiBoard[row][col];
-      if (!cell || cell.owner !== "shogi") continue;
-      for (const to of getLegalMoves(state.shogiBoard, from)) {
-        let score = 2 - (Math.abs(to.row - center) + Math.abs(to.col - center)) * 0.3;
-        if (cell.kind === "king") score -= 1.5;
+      const cell = state.board[row][col];
+      if (cell?.type !== "piece") continue;
+      const libs = pieceLiberties(state.board, from).length;
+      for (const to of getLegalMoves(state.board, from)) {
+        let score = 1;
+        if (libs <= 2) score += 5;
+        if (cell.piece.kind === "king") {
+          score += libs <= 2 ? 8 : -1;
+        }
+        score -= (Math.abs(to.row - center) + Math.abs(to.col - center)) * 0.15;
+        // Prefer moving toward stones to attack
+        for (const n of neighbors(state.config.size, to)) {
+          if (state.board[n.row][n.col]?.type === "stone") score += 1.5;
+        }
         if (score > best) {
           best = score;
           bestFrom = from;
@@ -105,27 +104,22 @@ export const chooseCpuActionSequence = (state: GameState): Action[] => {
   }
 
   for (const kind of ["gold", "silver", "knight", "pawn"] as HandKind[]) {
-    const drops = getLegalDrops(state.shogiBoard, state.shogiHand, kind);
+    const drops = getLegalDrops(state.board, state.shogiHand, kind);
     if (drops.length > 0) {
+      const roll = nextRng(state.rngState);
+      const to = drops[Math.floor(roll.value * drops.length) % drops.length];
       return [
         { type: "shogi_select_hand", kind },
-        { type: "shogi_drop", to: drops[0] },
+        { type: "shogi_drop", to },
       ];
     }
-  }
-
-  // Last resort: spend pressure if any
-  if (state.shogiPressure >= state.config.pressureReleaseAt) {
-    return [{ type: "shogi_release" }];
   }
 
   return [];
 };
 
-export const chooseCpuAction = (state: GameState): Action | null => {
-  const seq = chooseCpuActionSequence(state);
-  return seq[0] ?? null;
-};
+export const chooseCpuAction = (state: GameState): Action | null =>
+  chooseCpuActionSequence(state)[0] ?? null;
 
 export const runCpuTurn = (state: GameState): GameState => {
   let current = state;
@@ -135,12 +129,7 @@ export const runCpuTurn = (state: GameState): GameState => {
   const side = current.activeSide;
   let seq = chooseCpuActionSequence(current);
   if (seq.length === 0 && side === "shogi") {
-    if (current.shogiPressure >= current.config.pressureReleaseAt) {
-      seq = [{ type: "shogi_release" }];
-    } else {
-      // Immobilized — resign as CPU
-      return applyAction(current, { type: "resign", side: "shogi" }).state;
-    }
+    return applyAction(current, { type: "resign", side: "shogi" }).state;
   }
   for (const action of seq) {
     const result = applyAction(current, action);

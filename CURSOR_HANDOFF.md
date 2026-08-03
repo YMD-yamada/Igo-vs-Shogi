@@ -6,36 +6,30 @@
 - ブランチ: `cursor/igo-shogi-hybrid-327a`（PR #2）
 - 正本パス: `C:\Users\cz7\Projects\Igo-vs-Shogi`
 - 製品名: **黒白侵攻 / Kuroshiro**
-- `main` の静的デモを廃し、モノレポで一新済み
+- **一盤戦**: 共有 9×9（二盤面デザインは廃止）
+
+## ルール要約
+- 囲碁: 黒石を打ち、将棋駒を囲んで取る（王取り即勝ち）
+- 将棋: 駒を動かして黒石に乗る（石取り→歩の持ち駒）
+- 勝利: 囲碁=駒5 / 将棋=石10（ハンデ可）
 
 ## 実装済み
-- `packages/engine` — 囲碁9×9 / 将棋5×5、干渉・圧力・勝敗、CPU、ハンデプリセット、テスト
-- `apps/web` — Vite React PWA（ホットシート / CPU / オンライン / チュートリアル）
-- `apps/server` — WebSocket ルーム（席拘束・切断負け・30秒時限）・既定 `:9877`（8787 は cursor-usage-monitor と衝突するため変更）
-- `apps/desktop` — Electron（`npm run dev` 後に `npm run dev:desktop`）
-- `scripts/dev-web.mjs` — Windows でも Vite フラグが通るルート `npm run dev` ランチャー（既定 `127.0.0.1:5173`）
-- root `overrides.rollup` → `@rollup/wasm-node`（Windows ARM64 で native rollup が DLOpen 失敗するため）
-
-## ローカル継続（2026-08-03・Windows）
-- clone 済: `cursor/igo-shogi-hybrid-327a` → `C:\Users\cz7\Projects\Igo-vs-Shogi`
-- 追加: ハンデ UI・チュートリアル・WS 既定ポート 9877・wasm rollup override
-- 検証はセッション中に実行（test / smoke / web 200 / online smoke）
+- `packages/engine` — 共有盤エンジン + CPU + ハンデ + テスト
+- `apps/web` — 単一盤 UI / ホットシート / CPU / オンライン / チュートリアル
+- `apps/server` — WebSocket ルーム（既定 `:9877`）
+- `apps/desktop` — Electron
 
 ## 起動
 ```bash
 npm install
 npm run build -w @kuroshiro/engine
 npm run dev
-# 追加フラグ例: npm run dev -- --strictPort
-npm run dev:server   # ws://127.0.0.1:9877
-npm run dev:desktop  # Web 起動後
+npm run dev:server
 ```
 
-## 人間側の残り
-- PR #2 を merge（任意でレビュー）
-- Vercel（Web）+ 常時オンラインサーバー（Fly/Railway 等）をデプロイ（`PORT` / `VITE_WS_URL` を合わせる）
-- 実機でメニュー／チュートリアル／ハンデ／オンラインを触って確認
+## 検証
+- `npm test` / `npm run smoke` OK（一盤戦リライト後）
 
 ## 次の候補
-- オンライン部屋へのハンデ共有（現状はローカル／CPUのみ）
-- 本番デプロイと personal-site / ymd-portfolio 掲載
+- 本番デプロイ / personal-site 掲載
+- バランス微調整・チュートリアル強化
