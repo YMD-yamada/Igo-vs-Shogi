@@ -616,6 +616,15 @@ button {
   font-size: 0.85rem;
 }
 
+.legal-foot {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.legal-foot a {
+  color: inherit;
+}
+
 @media (min-width: 860px) {
   .app {
     max-width: 640px;
