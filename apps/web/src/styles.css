@@ -617,12 +617,16 @@ button {
 }
 
 .legal-foot {
-  margin-top: 1rem;
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1.1rem;
 }
 
-.legal-foot a {
-  color: inherit;
+.legal-foot a.handicap-chip {
+  text-decoration: none;
+  font-family: var(--display);
 }
 
 @media (min-width: 860px) {

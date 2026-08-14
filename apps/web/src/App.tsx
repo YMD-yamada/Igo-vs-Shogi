@@ -387,16 +387,26 @@ export function App() {
           >
             対局ログ（{logSummary.total}）
           </button>
-          <p className="muted legal-foot">
-            <a href="https://ymd-portfolio-site.pages.dev/legal/privacy" rel="noopener noreferrer">
+          <p className="legal-foot" aria-label="法務">
+            <a
+              className="handicap-chip"
+              href="https://ymd-portfolio-site.pages.dev/legal/privacy"
+              rel="noopener noreferrer"
+            >
               プライバシー
             </a>
-            {" · "}
-            <a href="https://ymd-portfolio-site.pages.dev/legal/terms" rel="noopener noreferrer">
+            <a
+              className="handicap-chip"
+              href="https://ymd-portfolio-site.pages.dev/legal/terms"
+              rel="noopener noreferrer"
+            >
               利用規約
             </a>
-            {" · "}
-            <a href="https://ymd-portfolio-site.pages.dev/legal/support" rel="noopener noreferrer">
+            <a
+              className="handicap-chip"
+              href="https://ymd-portfolio-site.pages.dev/legal/support"
+              rel="noopener noreferrer"
+            >
               サポート
             </a>
           </p>
