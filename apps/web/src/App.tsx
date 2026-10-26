@@ -284,6 +284,11 @@ export function App() {
           <button type="button" className="secondary" onClick={() => setScreen("rules")}>
             ルール
           </button>
+          <p className="muted">
+            <a href="https://ko-fi.com/ymdapps" target="_blank" rel="noopener noreferrer">
+              このゲームを応援する（Ko-fi）
+            </a>
+          </p>
         </div>
       </div>
     );
