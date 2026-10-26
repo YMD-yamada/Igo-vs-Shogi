@@ -142,6 +142,17 @@ button {
   animation: slide-up 0.55s ease both;
 }
 
+.handicap-details summary {
+  cursor: pointer;
+  padding: 10px 4px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.handicap-details[open] summary {
+  margin-bottom: 8px;
+}
+
 .handicap-box {
   margin: 0;
   padding: 12px;
@@ -664,4 +675,8 @@ button {
     grid-template-columns: 1.2fr 0.9fr;
     align-items: start;
   }
+}
+
+.menu .muted a {
+  color: var(--ink-soft);
 }
