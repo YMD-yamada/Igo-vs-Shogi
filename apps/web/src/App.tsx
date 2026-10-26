@@ -229,36 +229,40 @@ export function App() {
             黒白侵攻
             <span className="en">Kuroshiro</span>
           </h1>
-          <p>囲碁の包囲と将棋の切り込みが、相手の盤へ干渉する非対称バトル。</p>
+          <p>囲碁と将棋が戦う、ちょっと変わった対戦ゲーム。石で囲むか、駒で切り込むか。</p>
         </header>
         <div className="menu">
-          <fieldset className="handicap-box">
-            <legend>ハンデ（ローカル／CPU）</legend>
-            <div className="handicap-row" role="radiogroup" aria-label="ハンデ">
-              {handicapOptions().map((preset) => (
-                <label key={preset.id} className={`handicap-chip${handicap === preset.id ? " active" : ""}`}>
-                  <input
-                    type="radio"
-                    name="handicap"
-                    value={preset.id}
-                    checked={handicap === preset.id}
-                    onChange={() => setHandicap(preset.id)}
-                  />
-                  <span>{preset.label}</span>
-                </label>
-              ))}
-            </div>
-            <p className="muted handicap-desc">{HANDICAP_PRESETS[handicap].description}</p>
-          </fieldset>
-          <button type="button" className="primary" onClick={() => startLocal("hotseat")}>
-            1台で対戦（手渡し）
+          {/* 初めての人が迷わないよう、遊び方を最初の大きなボタンにする */}
+          <button type="button" className="primary" onClick={() => setScreen("tutorial")}>
+            はじめて遊ぶ（遊び方つき）
           </button>
           <button type="button" className="secondary" onClick={() => startLocal("cpu")}>
             CPUと対戦
           </button>
-          <button type="button" className="secondary" onClick={() => setScreen("tutorial")}>
-            はじめて（チュートリアル）
+          <button type="button" className="secondary" onClick={() => startLocal("hotseat")}>
+            2人で対戦（1台を手渡し）
           </button>
+          <details className="handicap-details">
+            <summary>ハンデを変える（いま：{HANDICAP_PRESETS[handicap].label}）</summary>
+            <fieldset className="handicap-box">
+              <legend>ハンデ（ローカル／CPU）</legend>
+              <div className="handicap-row" role="radiogroup" aria-label="ハンデ">
+                {handicapOptions().map((preset) => (
+                  <label key={preset.id} className={`handicap-chip${handicap === preset.id ? " active" : ""}`}>
+                    <input
+                      type="radio"
+                      name="handicap"
+                      value={preset.id}
+                      checked={handicap === preset.id}
+                      onChange={() => setHandicap(preset.id)}
+                    />
+                    <span>{preset.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="muted handicap-desc">{HANDICAP_PRESETS[handicap].description}</p>
+            </fieldset>
+          </details>
           {isOnlineAvailable() ? (
             <div className="online-box">
               <button type="button" className="secondary" onClick={() => void createOnline()}>
@@ -276,11 +280,7 @@ export function App() {
               </button>
               {onlineStatus && <div className="muted">{onlineStatus}</div>}
             </div>
-          ) : (
-            <p className="muted">
-              オンライン対戦はサーバー公開後に有効になります。いまは手渡し／CPUで遊べます。
-            </p>
-          )}
+          ) : null}
           <button type="button" className="secondary" onClick={() => setScreen("rules")}>
             ルール
           </button>
