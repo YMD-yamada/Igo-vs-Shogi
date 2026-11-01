@@ -538,13 +538,42 @@ button {
   opacity: 0.4;
 }
 
+/* 下に固定する操作バー。透けると盤に重なって見えるので、不透明な台の上に1行で並べる */
 .actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 6px;
   position: sticky;
   bottom: calc(8px + var(--safe-bottom));
   z-index: 5;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 -6px 18px var(--shadow);
+}
+
+.actions > button {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.actions > .confirm-btn {
+  flex-grow: 1.6;
+}
+
+.actions > .ghost-btn {
+  padding: 10px 2px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+}
+
+@media (min-width: 480px) {
+  .actions > .ghost-btn {
+    padding: 10px 12px;
+    font-size: 1rem;
+  }
 }
 
 .confirm-btn {
